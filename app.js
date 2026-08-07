@@ -18,7 +18,8 @@ document.addEventListener('DOMContentLoaded', () => {
         nbackLogs: [],
         sartKeyHandler: null,
         nbackKeyHandler: null,
-        sheetsUrl: localStorage.getItem('sheetsUrl') || ''
+        // Paste your deployed Google Apps Script Web App URL below:
+        sheetsUrl: 'https://script.google.com/macros/s/AKfycbzIr7lVPqD0aB_dM5ga3QuKqJuNUdGSc1sZze2NOFpwSHwrTE_zUDVnQ9FjMHtYX17P/exec'
     };
 
     // DOM ELEMENTS
@@ -114,20 +115,11 @@ document.addEventListener('DOMContentLoaded', () => {
         ringElement.style.strokeDashoffset = offset;
     }
 
-    // Load sheetsUrl from localStorage if available
-    const savedSheetsUrl = localStorage.getItem('sheetsUrl') || '';
-    const sheetsUrlInput = document.getElementById('sheets-url');
-    if (sheetsUrlInput) {
-        sheetsUrlInput.value = savedSheetsUrl;
-    }
-
     // EVENT: Setup Form Submit
     setupForm.addEventListener('submit', (e) => {
         e.preventDefault();
         state.username = usernameInput.value.trim() || 'Participant';
         state.sessionMode = sessionModeSelect.value;
-        state.sheetsUrl = sheetsUrlInput ? sheetsUrlInput.value.trim() : '';
-        localStorage.setItem('sheetsUrl', state.sheetsUrl);
         
         state.sartLogs = [];
         state.nbackLogs = [];
