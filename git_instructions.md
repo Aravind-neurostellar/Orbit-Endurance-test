@@ -52,12 +52,54 @@ git push -u origin main
 
 ---
 
-## Troubleshooting Mac Terminal Permissions
-If you get a SSH permission error, ensure your SSH key is added:
-```bash
-ssh-add -K ~/.ssh/id_ed25519
-```
-If you need to switch origin URL from HTTPS to SSH (or vice versa):
-```bash
-git remote set-url origin git@github.com:username/repo-name.git
-```
+## Troubleshooting Git 403 Forbidden Errors on Mac
+
+A `403 Forbidden` error on push means GitHub is rejecting your credentials—either because passwords are no longer supported over HTTPS, or because macOS Keychain is using a cached password from another GitHub account. Here are the 3 ways to fix it:
+
+### Method A: Switch to SSH (Recommended)
+SSH keys bypass password prompts and Keychain caching issues entirely. If you have SSH keys set up in GitHub:
+
+1. Update your remote URL to use SSH:
+   ```bash
+   git remote set-url origin git@github.com:Aravind-neurostellar/Orbit-Endurance-test.git
+   ```
+2. Push again:
+   ```bash
+   git push -u origin main
+   ```
+*(If you get a permission error, ensure your SSH agent is running and keys are loaded: `ssh-add -K ~/.ssh/id_ed25519` or `id_rsa`).*
+
+---
+
+### Method B: Embed your GitHub Personal Access Token (PAT)
+GitHub disabled password authentication for HTTPS in 2021. You must use a Personal Access Token (PAT) as your password.
+
+1. Generate a token:
+   - Go to [GitHub Token Settings](https://github.com/settings/tokens).
+   - Click **Generate new token (classic)**.
+   - Set a name (e.g. "Mac Push") and select the **repo** scope (access to repositories).
+   - Click **Generate token** and copy it immediately.
+2. Update your remote URL to embed this token:
+   ```bash
+   git remote set-url origin https://YOUR_TOKEN_HERE@github.com/Aravind-neurostellar/Orbit-Endurance-test.git
+   ```
+   *(Replace `YOUR_TOKEN_HERE` with the copied token).*
+3. Push again:
+   ```bash
+   git push -u origin main
+   ```
+
+---
+
+### Method C: Clear macOS Keychain Credentials
+If your Mac is trying to push using cached credentials from a different GitHub account:
+
+1. Open **Keychain Access** (Press `Cmd + Space` to open Spotlight, type "Keychain Access", and hit enter).
+2. Search for `github.com` in the top-right search bar.
+3. Locate the entry of kind "Internet Password" for `github.com` and **Delete** it.
+4. Go back to terminal and push:
+   ```bash
+   git push -u origin main
+   ```
+5. Terminal will ask for your Username and Password. Enter your GitHub username, and for the password, **paste your Personal Access Token (PAT)**.
+
