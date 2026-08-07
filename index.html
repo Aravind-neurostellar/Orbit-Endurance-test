@@ -1,0 +1,346 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Orbit Cognitive Assessment Suite (SART2 & N-Back)</title>
+    <meta name="description" content="A premium cognitive assessment web application featuring SART2 and 2-Back tests with Orbit recording integration.">
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+    <!-- Chart.js for High-Fidelity Results Rendering -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="glow-bg">
+        <div class="glow-orb orb-1"></div>
+        <div class="glow-orb orb-2"></div>
+    </div>
+
+    <div class="app-container">
+        <!-- WELCOME SCREEN -->
+        <section id="screen-welcome" class="screen active">
+            <div class="card header-card animate-fade-in">
+                <div class="logo-container">
+                    <span class="logo-icon">🪐</span>
+                    <h1 class="logo-text">Orbit</h1>
+                </div>
+                <h2>Cognitive Assessment Suite</h2>
+                <p class="subtitle">Complete the SART2 and N-Back tasks to measure response inhibition and working memory.</p>
+            </div>
+
+            <div class="card form-card animate-fade-in delay-100">
+                <form id="setup-form">
+                    <div class="input-group">
+                        <label for="username">Participant Name or ID</label>
+                        <input type="text" id="username" required placeholder="Enter participant name..." autocomplete="off">
+                    </div>
+
+                    <div class="input-group">
+                        <label for="session-mode">Session Mode</label>
+                        <div class="select-wrapper">
+                            <select id="session-mode">
+                                <option value="standard">Standard Session (5 minutes per test)</option>
+                                <option value="demo">Demo / Debug Mode (15 seconds per test)</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="input-group">
+                        <label for="sheets-url">Google Sheets Web App URL (Optional)</label>
+                        <input type="text" id="sheets-url" placeholder="Paste Apps Script Web App URL..." autocomplete="off">
+                        <span class="input-help">If provided, results will automatically sync to your spreadsheet.</span>
+                    </div>
+
+                    <div class="info-grid">
+                        <div class="info-box">
+                            <div class="info-icon">⚡</div>
+                            <h3>1. SART2 Task</h3>
+                            <p>Sustained Attention to Response Task. Press <strong>Spacebar</strong> for all digits (1-9) except the target digit <strong>3</strong>.</p>
+                        </div>
+                        <div class="info-box">
+                            <div class="info-icon">🧠</div>
+                            <h3>2. N-Back Task</h3>
+                            <p>2-Back working memory test. Press <strong>M</strong> or <strong>Spacebar</strong> if the current letter matches the letter shown 2 steps back.</p>
+                        </div>
+                    </div>
+
+                    <button type="submit" class="btn btn-primary" id="btn-start-session">
+                        Begin Assessment Session <span class="arrow">&rarr;</span>
+                    </button>
+                </form>
+            </div>
+        </section>
+
+        <!-- SART2 ORBIT PROMPT SCREEN -->
+        <section id="screen-sart-prompt" class="screen">
+            <div class="card prompt-card animate-fade-in">
+                <div class="badge">Step 1 of 2</div>
+                <h2>Prepare Sustained Attention Task (SART2)</h2>
+                
+                <div class="orbit-reminder-box">
+                    <div class="orbit-logo">O</div>
+                    <div class="orbit-text">
+                        <h3>Orbit Recording Required</h3>
+                        <p>Open Orbit and click <strong>Start Recording</strong> to capture keyboard event parameters and baseline cognitive metrics.</p>
+                    </div>
+                </div>
+
+                <div class="countdown-action-container">
+                    <button class="btn btn-primary btn-record" id="btn-sart-started">
+                        🔴 Recording started
+                    </button>
+
+                    <div id="sart-countdown-display" class="countdown-display hidden">
+                        <div class="countdown-circle">
+                            <svg class="progress-ring" width="120" height="120">
+                                <circle class="progress-ring__circle-bg" stroke="rgba(255,255,255,0.05)" stroke-width="6" fill="transparent" r="52" cx="60" cy="60"/>
+                                <circle class="progress-ring__circle" id="sart-countdown-ring" stroke="var(--primary)" stroke-width="6" fill="transparent" r="52" cx="60" cy="60"/>
+                            </svg>
+                            <span class="countdown-number" id="sart-countdown-number">10</span>
+                        </div>
+                        <p class="countdown-caption">Starting SART2 in <span id="sart-countdown-seconds">10</span> seconds. Get ready!</p>
+                    </div>
+                </div>
+
+                <div class="instructions-panel">
+                    <h4>Task Quick Guide:</h4>
+                    <ul>
+                        <li>Varying sized digits (1-9) will flash on screen.</li>
+                        <li>Press the <strong>Spacebar</strong> for every digit you see.</li>
+                        <li><strong>WITHHOLD</strong> response (do not press) when you see the number <strong>3</strong>.</li>
+                        <li>Respond quickly and as accurately as possible.</li>
+                    </ul>
+                </div>
+            </div>
+        </section>
+
+        <!-- SART2 TEST SCREEN -->
+        <section id="screen-sart-test" class="screen dark-theme-test">
+            <div class="test-header">
+                <span class="test-title">SART2 Task</span>
+                <span class="test-timer" id="sart-timer">05:00</span>
+            </div>
+
+            <div class="test-workspace">
+                <!-- Stimulus Area -->
+                <div class="stimulus-container">
+                    <div id="sart-digit" class="sart-stimulus"></div>
+                    <div id="sart-mask" class="sart-mask hidden">
+                        <div class="mask-circle">
+                            <div class="mask-cross-horizontal"></div>
+                            <div class="mask-cross-vertical"></div>
+                            <div class="mask-cross-diagonal1"></div>
+                            <div class="mask-cross-diagonal2"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Live Feedback Indicator (turns red on error, green on correct button presses) -->
+                <div id="sart-feedback" class="feedback-indicator hidden"></div>
+            </div>
+
+            <div class="test-footer">
+                <p>Press <kbd>Spacebar</kbd> for numbers. Do NOT press for <span class="highlight">3</span>.</p>
+            </div>
+        </section>
+
+        <!-- BREAK SCREEN -->
+        <section id="screen-break" class="screen">
+            <div class="card break-card animate-fade-in">
+                <div class="break-icon">⏳</div>
+                <h2>Vigilance Recovery Break</h2>
+                <p>To ensure valid cognitive load assessment and clear cognitive fatigue, it is highly recommended that you take a <strong>1-hour break</strong> before starting the N-Back test.</p>
+
+                <div class="break-timer-container">
+                    <div class="timer-values">
+                        <div class="time-block">
+                            <span id="break-hour" class="time-num">01</span>
+                            <span class="time-label">hour</span>
+                        </div>
+                        <span class="time-colon">:</span>
+                        <div class="time-block">
+                            <span id="break-minute" class="time-num">00</span>
+                            <span class="time-label">minute</span>
+                        </div>
+                        <span class="time-colon">:</span>
+                        <div class="time-block">
+                            <span id="break-second" class="time-num">00</span>
+                            <span class="time-label">second</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="break-actions">
+                    <button class="btn btn-secondary" id="btn-skip-break">
+                        Skip Break (for testing)
+                    </button>
+                    <button class="btn btn-primary" id="btn-proceed-nback" disabled>
+                        Proceed to N-Back <span class="arrow">&rarr;</span>
+                    </button>
+                </div>
+            </div>
+        </section>
+
+        <!-- N-BACK ORBIT PROMPT SCREEN -->
+        <section id="screen-nback-prompt" class="screen">
+            <div class="card prompt-card animate-fade-in">
+                <div class="badge">Step 2 of 2</div>
+                <h2>Prepare Working Memory Task (N-Back)</h2>
+                
+                <div class="orbit-reminder-box">
+                    <div class="orbit-logo">O</div>
+                    <div class="orbit-text">
+                        <h3>Verify Orbit Recording</h3>
+                        <p>Verify that Orbit is recording. If you stopped recording during the break, please start a new recording now.</p>
+                    </div>
+                </div>
+
+                <div class="countdown-action-container">
+                    <button class="btn btn-primary btn-record" id="btn-nback-started">
+                        🔴 Recording started
+                    </button>
+
+                    <div id="nback-countdown-display" class="countdown-display hidden">
+                        <div class="countdown-circle">
+                            <svg class="progress-ring" width="120" height="120">
+                                <circle class="progress-ring__circle-bg" stroke="rgba(255,255,255,0.05)" stroke-width="6" fill="transparent" r="52" cx="60" cy="60"/>
+                                <circle class="progress-ring__circle" id="nback-countdown-ring" stroke="var(--primary)" stroke-width="6" fill="transparent" r="52" cx="60" cy="60"/>
+                            </svg>
+                            <span class="countdown-number" id="nback-countdown-number">10</span>
+                        </div>
+                        <p class="countdown-caption">Starting N-Back in <span id="nback-countdown-seconds">10</span> seconds. Get ready!</p>
+                    </div>
+                </div>
+
+                <div class="instructions-panel">
+                    <h4>Task Quick Guide (2-Back):</h4>
+                    <ul>
+                        <li>A sequence of letters will appear one by one.</li>
+                        <li>Press the letter <kbd>M</kbd> or <kbd>Spacebar</kbd> if the letter currently on screen is the <strong>same</strong> as the letter shown <strong>2 steps back</strong>.</li>
+                        <li>Example: <strong>A</strong> &rarr; B &rarr; <strong>A</strong> (Match! Press M)</li>
+                        <li>Example: A &rarr; <strong>B</strong> &rarr; C &rarr; <strong>B</strong> (Match! Press M)</li>
+                    </ul>
+                </div>
+            </div>
+        </section>
+
+        <!-- N-BACK TEST SCREEN -->
+        <section id="screen-nback-test" class="screen dark-theme-test">
+            <div class="test-header">
+                <span class="test-title">2-Back Task</span>
+                <span class="test-timer" id="nback-timer">05:00</span>
+            </div>
+
+            <div class="test-workspace">
+                <div class="stimulus-container">
+                    <div id="nback-letter" class="nback-stimulus"></div>
+                    <div id="nback-fixation" class="nback-fixation">+</div>
+                </div>
+            </div>
+
+            <div class="test-footer">
+                <p>Press <kbd>M</kbd> or <kbd>Spacebar</kbd> if matches the letter <span class="highlight">2 steps ago</span>.</p>
+            </div>
+        </section>
+
+        <!-- RESULTS SCREEN -->
+        <section id="screen-results" class="screen">
+            <div class="card results-header-card animate-fade-in">
+                <div class="badge success-badge">Assessment Complete</div>
+                <h2>Session Analysis</h2>
+                <p class="subtitle">Participant: <strong id="res-participant-name">User</strong> | Date: <span id="res-date">August 7, 2026</span></p>
+                
+                <div id="sync-status-box" class="sync-status-box hidden">
+                    <span class="sync-status-icon">🔄</span>
+                    <span id="sync-status-text">Syncing results to Google Sheets...</span>
+                </div>
+
+                <button class="btn btn-primary btn-download" id="btn-download-csv">
+                    💾 Download Detailed CSV Log
+                </button>
+            </div>
+
+            <div class="results-grid animate-fade-in delay-100">
+                <!-- SART2 Stats -->
+                <div class="card stats-card">
+                    <div class="stats-card-header sart-accent">
+                        <h3>SART2 Performance</h3>
+                        <span class="header-desc">Vigilance & Motor Inhibition</span>
+                    </div>
+                    <div class="stats-metric-grid">
+                        <div class="metric-box">
+                            <span class="metric-label">Accuracy</span>
+                            <span class="metric-value" id="sart-acc">-</span>
+                        </div>
+                        <div class="metric-box">
+                            <span class="metric-label">Mean RT</span>
+                            <span class="metric-value" id="sart-rt">-</span>
+                        </div>
+                        <div class="metric-box">
+                            <span class="metric-label">RT Std Dev</span>
+                            <span class="metric-value" id="sart-rtsd">-</span>
+                        </div>
+                        <div class="metric-box">
+                            <span class="metric-label">Commission Errors (on 3)</span>
+                            <span class="metric-value error-color" id="sart-comm">-</span>
+                        </div>
+                        <div class="metric-box">
+                            <span class="metric-label">Omission Errors (no press)</span>
+                            <span class="metric-value error-color" id="sart-omis">-</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- N-Back Stats -->
+                <div class="card stats-card">
+                    <div class="stats-card-header nback-accent">
+                        <h3>N-Back (2-Back) Performance</h3>
+                        <span class="header-desc">Working Memory Capacity</span>
+                    </div>
+                    <div class="stats-metric-grid">
+                        <div class="metric-box">
+                            <span class="metric-label">Accuracy</span>
+                            <span class="metric-value" id="nback-acc">-</span>
+                        </div>
+                        <div class="metric-box">
+                            <span class="metric-label">Mean RT (Hits)</span>
+                            <span class="metric-value" id="nback-rt">-</span>
+                        </div>
+                        <div class="metric-box">
+                            <span class="metric-label">Hit Rate</span>
+                            <span class="metric-value" id="nback-hitrate">-</span>
+                        </div>
+                        <div class="metric-box">
+                            <span class="metric-label">False Alarm Rate</span>
+                            <span class="metric-value error-color" id="nback-farate">-</span>
+                        </div>
+                        <div class="metric-box">
+                            <span class="metric-label">Hits / Misses</span>
+                            <span class="metric-value" id="nback-hitmiss">-</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Graph Card -->
+            <div class="card chart-card animate-fade-in delay-200">
+                <h3>Reaction Time Profiles</h3>
+                <p class="chart-desc">Response speed over the duration of the trials for both tasks.</p>
+                <div class="chart-container">
+                    <canvas id="rt-chart"></canvas>
+                </div>
+            </div>
+
+            <div class="action-footer animate-fade-in delay-300">
+                <button class="btn btn-secondary" id="btn-restart">
+                    Start New Assessment Session
+                </button>
+            </div>
+        </section>
+    </div>
+    <script src="app.js"></script>
+</body>
+</html>
