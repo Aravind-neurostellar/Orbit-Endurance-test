@@ -142,6 +142,41 @@
             </div>
         </section>
 
+        <!-- SART2 ORBIT UPLOAD SCREEN -->
+        <section id="screen-sart-upload" class="screen">
+            <div class="card upload-card animate-fade-in">
+                <div class="badge">SART2 Complete</div>
+                <h2>Upload SART2 Orbit Recording</h2>
+                <p class="subtitle">Please upload the Orbit data recording file (.txt, .csv, or other) containing your SART2 keyboard and baseline biometric events.</p>
+                
+                <div class="upload-zone" id="sart-upload-zone">
+                    <span class="upload-icon">📂</span>
+                    <p class="upload-prompt">Drag & drop your SART2 Orbit file here, or <span class="browse-link">browse files</span></p>
+                    <input type="file" id="sart-file-input" class="file-input" style="display: none;">
+                </div>
+                
+                <div id="sart-file-info" class="file-info hidden">
+                    <div class="file-details">
+                        <span class="file-name-icon">📄</span>
+                        <div class="file-meta">
+                            <span id="sart-file-name" class="file-name">filename.txt</span>
+                            <span id="sart-file-size" class="file-size">120 KB</span>
+                        </div>
+                    </div>
+                    <button class="btn-remove-file" id="btn-remove-sart-file" type="button">&times;</button>
+                </div>
+                
+                <div class="upload-actions">
+                    <button class="btn btn-primary" id="btn-proceed-to-break">
+                        Save File & Proceed to Break <span class="arrow">&rarr;</span>
+                    </button>
+                    <button class="btn btn-secondary" id="btn-skip-sart-upload">
+                        Skip Upload
+                    </button>
+                </div>
+            </div>
+        </section>
+
         <!-- BREAK SCREEN -->
         <section id="screen-break" class="screen">
             <div class="card break-card animate-fade-in">
@@ -241,6 +276,41 @@
             </div>
         </section>
 
+        <!-- N-BACK ORBIT UPLOAD SCREEN -->
+        <section id="screen-nback-upload" class="screen">
+            <div class="card upload-card animate-fade-in">
+                <div class="badge">N-Back Complete</div>
+                <h2>Upload N-Back Orbit Recording</h2>
+                <p class="subtitle">Please upload the Orbit data recording file containing your N-Back cognitive tracking events.</p>
+                
+                <div class="upload-zone" id="nback-upload-zone">
+                    <span class="upload-icon">📂</span>
+                    <p class="upload-prompt">Drag & drop your N-Back Orbit file here, or <span class="browse-link">browse files</span></p>
+                    <input type="file" id="nback-file-input" class="file-input" style="display: none;">
+                </div>
+                
+                <div id="nback-file-info" class="file-info hidden">
+                    <div class="file-details">
+                        <span class="file-name-icon">📄</span>
+                        <div class="file-meta">
+                            <span id="nback-file-name" class="file-name">filename.txt</span>
+                            <span id="nback-file-size" class="file-size">120 KB</span>
+                        </div>
+                    </div>
+                    <button class="btn-remove-file" id="btn-remove-nback-file" type="button">&times;</button>
+                </div>
+                
+                <div class="upload-actions">
+                    <button class="btn btn-primary" id="btn-submit-results">
+                        Save File & Sync Results <span class="arrow">&rarr;</span>
+                    </button>
+                    <button class="btn btn-secondary" id="btn-skip-nback-upload">
+                        Skip Upload
+                    </button>
+                </div>
+            </div>
+        </section>
+
         <!-- RESULTS SCREEN -->
         <section id="screen-results" class="screen">
             <div class="card results-header-card animate-fade-in">
@@ -317,6 +387,28 @@
                             <span class="metric-value" id="nback-hitmiss">-</span>
                         </div>
                     </div>
+                </div>
+            </div>
+
+            <!-- Google Drive File Links -->
+            <div id="drive-links-box" class="card drive-links-card hidden animate-fade-in delay-150">
+                <h3>Uploaded Orbit Files on Google Drive</h3>
+                <p class="drive-desc">The following links direct to the secure raw recording files stored on Google Drive.</p>
+                <div class="drive-links-grid">
+                    <a id="sart-drive-link" class="drive-link" target="_blank" href="#">
+                        <span class="drive-icon">🪐</span>
+                        <div class="drive-link-text">
+                            <strong>SART2 Orbit File</strong>
+                            <span class="drive-link-url" id="sart-link-text">Open in Google Drive &rarr;</span>
+                        </div>
+                    </a>
+                    <a id="nback-drive-link" class="drive-link" target="_blank" href="#">
+                        <span class="drive-icon">🧠</span>
+                        <div class="drive-link-text">
+                            <strong>N-Back Orbit File</strong>
+                            <span class="drive-link-url" id="nback-link-text">Open in Google Drive &rarr;</span>
+                        </div>
+                    </a>
                 </div>
             </div>
 
