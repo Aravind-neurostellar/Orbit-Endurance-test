@@ -94,10 +94,12 @@ document.addEventListener('DOMContentLoaded', () => {
     // HELPER: Screen Navigation
     function showScreen(screenId) {
         Object.keys(screens).forEach(key => {
+            const screenElement = screens[key];
+            if (!screenElement) return; // Prevent crashes if HTML elements are cached/missing
             if (key === screenId) {
-                screens[key].classList.add('active');
+                screenElement.classList.add('active');
             } else {
-                screens[key].classList.remove('active');
+                screenElement.classList.remove('active');
             }
         });
     }
