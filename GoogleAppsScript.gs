@@ -24,7 +24,7 @@ function doPost(e) {
     var timestamp = data.timestamp || new Date().toISOString();
     var sessionMode = data.sessionMode || "standard";
     
-    var ss = SpreadsheetApp.getActiveSpreadsheet();
+    var ss = SpreadsheetApp.openById("1A2ZqoX-TkrOWKKVfYG4Hb-WBzo4pHPY7QBFi18aMNB8");
     
     // ----------------------------------------------------
     // 1. SAVE FILE ATTACHMENTS TO GOOGLE DRIVE
