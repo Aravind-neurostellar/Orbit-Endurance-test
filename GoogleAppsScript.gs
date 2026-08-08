@@ -33,17 +33,34 @@ function doPost(e) {
     // ----------------------------------------------------
     // 1. SAVE FILE ATTACHMENTS TO GOOGLE DRIVE
     // ----------------------------------------------------
+    var baselineFileUrl = "";
     var sartFileUrl = "";
     var nbackFileUrl = "";
     
     // Get or create dedicated folder "Orbit_Recordings"
     var folder = getOrCreateFolder("Orbit_Recordings");
     
+    // Save Baseline file if present
+    if (data.baselineFile && data.baselineFile.base64) {
+      try {
+        var baselineDecoded = Utilities.base64Decode(data.baselineFile.base64);
+        var baselineFileName = participant + "_Baseline_" + getSafeTimestampString(timestamp) + "_" + data.baselineFile.name;
+        var baselineBlob = Utilities.newBlob(baselineDecoded, data.baselineFile.mimeType, baselineFileName);
+        
+        var file = folder.createFile(baselineBlob);
+        file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+        baselineFileUrl = file.getUrl();
+      } catch (fErr) {
+        baselineFileUrl = "Error saving file: " + fErr.toString();
+      }
+    } else {
+      baselineFileUrl = "N/A (Skipped)";
+    }
+    
     // Save SART2 file if present
     if (data.sartFile && data.sartFile.base64) {
       try {
         var sartDecoded = Utilities.base64Decode(data.sartFile.base64);
-        // Append participant and timestamp to filename to prevent overwrites
         var sartFileName = participant + "_SART2_" + getSafeTimestampString(timestamp) + "_" + data.sartFile.name;
         var sartBlob = Utilities.newBlob(sartDecoded, data.sartFile.mimeType, sartFileName);
         
@@ -101,12 +118,18 @@ function doPost(e) {
         "N-Back Misses", 
         "N-Back False Alarms", 
         "N-Back Correct Rejections",
-        "SART2 Orbit File Link",   // new column
-        "N-Back Orbit File Link"    // new column
+        "Baseline Orbit File Link", // column 17
+        "SART2 Orbit File Link",    // column 18
+        "N-Back Orbit File Link"     // column 19
       ]);
       // Format headers
-      summarySheet.getRange(1, 1, 1, 18).setFontWeight("bold").setBackground("#e0e7ff");
+      summarySheet.getRange(1, 1, 1, 19).setFontWeight("bold").setBackground("#e0e7ff");
     }
+    
+    // Format links as actual clickable hyperlinks using formulas
+    var baselineLinkFormula = baselineFileUrl.indexOf("http") === 0 ? '=HYPERLINK("' + baselineFileUrl + '", "Open Baseline File ↗")' : baselineFileUrl;
+    var sartLinkFormula = sartFileUrl.indexOf("http") === 0 ? '=HYPERLINK("' + sartFileUrl + '", "Open SART2 File ↗")' : sartFileUrl;
+    var nbackLinkFormula = nbackFileUrl.indexOf("http") === 0 ? '=HYPERLINK("' + nbackFileUrl + '", "Open N-Back File ↗")' : nbackFileUrl;
     
     summarySheet.appendRow([
       timestamp,
@@ -125,8 +148,9 @@ function doPost(e) {
       data.nbackMetrics.misses,
       data.nbackMetrics.falseAlarms,
       data.nbackMetrics.correctRejections,
-      sartFileUrl,
-      nbackFileUrl
+      baselineLinkFormula,
+      sartLinkFormula,
+      nbackLinkFormula
     ]);
     
     // ----------------------------------------------------
@@ -246,16 +270,35 @@ function doPost(e) {
       pSheet.getRange(5, 1, 1, 3).setFontWeight("bold").setBackground("#e0f2fe");
       pSheet.getRange(5, 1, 5, 1).setFontWeight("bold");
       
-      // Drive file links
-      pSheet.getRange("A11").setValue("Google Drive Orbit File Links:").setFontWeight("bold");
-      pSheet.getRange("B11").setValue("SART2 Orbit File: " + (sartFileUrl.indexOf("http") === 0 ? sartFileUrl : "N/A"));
-      pSheet.getRange("C11").setValue("N-Back Orbit File: " + (nbackFileUrl.indexOf("http") === 0 ? nbackFileUrl : "N/A"));
+      // Drive file links (Stacked Vertically and Clickable)
+      pSheet.getRange("A11").setValue("GOOGLE DRIVE RECORDING LINKS").setFontWeight("bold").setFontSize(11).setFontColor("#0369a1");
+      
+      pSheet.getRange("A12").setValue("Baseline Orbit File:").setFontWeight("bold");
+      if (baselineFileUrl.indexOf("http") === 0) {
+        pSheet.getRange("B12").setFormula('=HYPERLINK("' + baselineFileUrl + '", "Open Baseline File ↗")').setFontColor("#1e40af").setFontUnderline(true);
+      } else {
+        pSheet.getRange("B12").setValue(baselineFileUrl);
+      }
+      
+      pSheet.getRange("A13").setValue("SART2 Orbit File:").setFontWeight("bold");
+      if (sartFileUrl.indexOf("http") === 0) {
+        pSheet.getRange("B13").setFormula('=HYPERLINK("' + sartFileUrl + '", "Open SART2 File ↗")').setFontColor("#1e40af").setFontUnderline(true);
+      } else {
+        pSheet.getRange("B13").setValue(sartFileUrl);
+      }
+      
+      pSheet.getRange("A14").setValue("N-Back Orbit File:").setFontWeight("bold");
+      if (nbackFileUrl.indexOf("http") === 0) {
+        pSheet.getRange("B14").setFormula('=HYPERLINK("' + nbackFileUrl + '", "Open N-Back File ↗")').setFontColor("#1e40af").setFontUnderline(true);
+      } else {
+        pSheet.getRange("B14").setValue(nbackFileUrl);
+      }
       
       // Raw trial data header
-      pSheet.getRange("A13").setValue("RAW EVENT LOGS (TRIAL-BY-TRIAL)").setFontWeight("bold").setFontSize(11).setFontColor("#0369a1");
+      pSheet.getRange("A16").setValue("RAW EVENT LOGS (TRIAL-BY-TRIAL)").setFontWeight("bold").setFontSize(11).setFontColor("#0369a1");
       
       var trialHeaders = ["Task", "Trial Number", "Stimulus", "Stimulus Size / N", "Is Target", "Response Key", "Reaction Time (ms)", "Is Correct", "Outcome Details"];
-      pSheet.getRange(14, 1, 1, 9).setValues([trialHeaders]).setFontWeight("bold").setBackground("#f1f5f9");
+      pSheet.getRange(17, 1, 1, 9).setValues([trialHeaders]).setFontWeight("bold").setBackground("#f1f5f9");
       
       // Compile individual rows
       var pRows = [];
@@ -292,7 +335,7 @@ function doPost(e) {
       }
       
       if (pRows.length > 0) {
-        pSheet.getRange(15, 1, pRows.length, pRows[0].length).setValues(pRows);
+        pSheet.getRange(18, 1, pRows.length, pRows[0].length).setValues(pRows);
       }
       
       pSheet.autoResizeColumns(1, 9);
@@ -304,6 +347,7 @@ function doPost(e) {
     var responseObj = {
       "status": "success", 
       "message": "Results logged to sheets",
+      "baselineFileUrl": baselineFileUrl.indexOf("http") === 0 ? baselineFileUrl : null,
       "sartFileUrl": sartFileUrl.indexOf("http") === 0 ? sartFileUrl : null,
       "nbackFileUrl": nbackFileUrl.indexOf("http") === 0 ? nbackFileUrl : null
     };

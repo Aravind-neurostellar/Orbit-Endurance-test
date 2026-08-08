@@ -20,19 +20,25 @@ document.addEventListener('DOMContentLoaded', () => {
         nbackKeyHandler: null,
         // Paste your deployed Google Apps Script Web App URL below:
         sheetsUrl: 'https://script.google.com/macros/s/AKfycbyBQuBIwS2Qg7uG_VmmMIhuc3qXRvesXdEYVwEL4xm4JUIaGN6LqVt-EHxvcGSXOYcx/exec',
+        baselineFile: null,   // Stores { base64: '...', name: '...', mimeType: '...' }
         sartFile: null,       // Stores { base64: '...', name: '...', mimeType: '...' }
-        nbackFile: null       // Stores { base64: '...', name: '...', mimeType: '...' }
+        nbackFile: null,      // Stores { base64: '...', name: '...', mimeType: '...' }
+        nbackMissed: false
     };
 
     // DOM ELEMENTS
     const screens = {
         welcome: document.getElementById('screen-welcome'),
+        baselinePrompt: document.getElementById('screen-baseline-prompt'),
+        baselineUpload: document.getElementById('screen-baseline-upload'),
         sartPrompt: document.getElementById('screen-sart-prompt'),
         sartTest: document.getElementById('screen-sart-test'),
+        sartWait: document.getElementById('screen-sart-wait'),
         sartUpload: document.getElementById('screen-sart-upload'),
         break: document.getElementById('screen-break'),
         nbackPrompt: document.getElementById('screen-nback-prompt'),
         nbackTest: document.getElementById('screen-nback-test'),
+        nbackWait: document.getElementById('screen-nback-wait'),
         nbackUpload: document.getElementById('screen-nback-upload'),
         results: document.getElementById('screen-results')
     };
@@ -102,6 +108,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 screenElement.classList.remove('active');
             }
         });
+        window.scrollTo(0, 0); // Correctly scroll window to top to avoid responsive black screen scrolling issues
     }
 
     // HELPER: Format Time (MM:SS)
@@ -122,6 +129,15 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // EVENT: Setup Form Submit
+    function resetBaselinePrompt() {
+        const btnBaselineStarted = document.getElementById('btn-baseline-started');
+        const baselineCountdownDisplay = document.getElementById('baseline-countdown-display');
+        if (btnBaselineStarted && baselineCountdownDisplay) {
+            btnBaselineStarted.classList.remove('hidden');
+            baselineCountdownDisplay.classList.add('hidden');
+        }
+    }
+
     setupForm.addEventListener('submit', (e) => {
         e.preventDefault();
         state.username = usernameInput.value.trim() || 'Participant';
@@ -129,9 +145,82 @@ document.addEventListener('DOMContentLoaded', () => {
         
         state.sartLogs = [];
         state.nbackLogs = [];
+        state.baselineFile = null;
+        state.sartFile = null;
+        state.nbackFile = null;
+        state.nbackMissed = false;
         
-        showScreen('sartPrompt');
+        // Start with Baseline stage
+        showScreen('baselinePrompt');
+        resetBaselinePrompt();
     });
+
+    // Baseline Started countdown handling
+    const btnBaselineStarted = document.getElementById('btn-baseline-started');
+    const baselineCountdownDisplay = document.getElementById('baseline-countdown-display');
+    const baselineCountdownNumber = document.getElementById('baseline-countdown-number');
+    const baselineCountdownSeconds = document.getElementById('baseline-countdown-seconds');
+    const baselineCountdownRing = document.getElementById('baseline-countdown-ring');
+
+    if (btnBaselineStarted) {
+        btnBaselineStarted.addEventListener('click', () => {
+            btnBaselineStarted.classList.add('hidden');
+            baselineCountdownDisplay.classList.remove('hidden');
+            
+            const durationLimit = state.testDurations[state.sessionMode];
+            let timeLeft = durationLimit;
+            
+            if (baselineCountdownNumber) baselineCountdownNumber.textContent = formatTimerString(timeLeft);
+            if (baselineCountdownSeconds) baselineCountdownSeconds.textContent = Math.floor(timeLeft / 1000);
+            if (baselineCountdownRing) setProgressRing(baselineCountdownRing, 100);
+            
+            const interval = setInterval(() => {
+                timeLeft -= 1000;
+                if (baselineCountdownNumber) baselineCountdownNumber.textContent = formatTimerString(timeLeft);
+                if (baselineCountdownSeconds) baselineCountdownSeconds.textContent = Math.floor(timeLeft / 1000);
+                
+                if (baselineCountdownRing) {
+                    const percent = (timeLeft / durationLimit) * 100;
+                    setProgressRing(baselineCountdownRing, percent);
+                }
+                
+                if (timeLeft <= 0) {
+                    clearInterval(interval);
+                    showScreen('baselineUpload');
+                }
+            }, 1000);
+            
+            // Allow clicking timer to skip in demo mode
+            if (state.sessionMode === 'demo' && baselineCountdownNumber) {
+                baselineCountdownNumber.style.cursor = 'pointer';
+                baselineCountdownNumber.onclick = () => {
+                    clearInterval(interval);
+                    showScreen('baselineUpload');
+                };
+            }
+        });
+    }
+
+    const btnProceedToSart = document.getElementById('btn-proceed-to-sart');
+    if (btnProceedToSart) {
+        btnProceedToSart.addEventListener('click', () => {
+            showScreen('sartPrompt');
+        });
+    }
+
+    const btnSkipBaselineUpload = document.getElementById('btn-skip-baseline-upload');
+    if (btnSkipBaselineUpload) {
+        btnSkipBaselineUpload.addEventListener('click', () => {
+            state.baselineFile = null;
+            const input = document.getElementById('baseline-file-input');
+            const info = document.getElementById('baseline-file-info');
+            const zone = document.getElementById('baseline-upload-zone');
+            if (input) input.value = '';
+            if (info) info.classList.add('hidden');
+            if (zone) zone.classList.remove('hidden');
+            showScreen('sartPrompt');
+        });
+    }
 
     // SART2 ORBIT PROMPT & COUNTDOWN
     btnSartStarted.addEventListener('click', () => {
@@ -237,7 +326,11 @@ document.addEventListener('DOMContentLoaded', () => {
             sartDigitDisplay.classList.remove('hidden');
             sartMaskDisplay.classList.add('hidden');
             sartMaskDisplay.className = 'sart-mask hidden'; // reset success/error status classes
-            sartFeedbackDisplay.classList.add('hidden');
+            
+            // Only hide feedback at the start of a trial if it doesn't contain "Missed" (let it fade out naturally)
+            if (sartFeedbackDisplay && !sartFeedbackDisplay.textContent.includes('Missed')) {
+                sartFeedbackDisplay.classList.add('hidden');
+            }
 
             trialStartTimestamp = performance.now();
 
@@ -329,15 +422,37 @@ document.addEventListener('DOMContentLoaded', () => {
         state.sartKeyHandler = handleSpace;
         window.addEventListener('keydown', state.sartKeyHandler);
 
+        // Bind skip button safely
+        const btnSkipSart = document.getElementById('btn-skip-sart-test');
+        if (btnSkipSart) {
+            btnSkipSart.onclick = endSartTest;
+        }
+
         // Start first trial
         runTrial();
 
         // End task function
         function endSartTest() {
+            clearInterval(timerInterval);
             clearTimeout(stimulusTimer);
             clearTimeout(maskTimer);
             window.removeEventListener('keydown', state.sartKeyHandler);
-            showSartUpload();
+            
+            // 10-second wait screen before file upload
+            showScreen('sartWait');
+            let secondsLeft = 10;
+            const sartWaitNumber = document.getElementById('sart-wait-number');
+            if (sartWaitNumber) sartWaitNumber.textContent = secondsLeft;
+            
+            const waitInterval = setInterval(() => {
+                secondsLeft--;
+                if (sartWaitNumber) sartWaitNumber.textContent = secondsLeft;
+                
+                if (secondsLeft <= 0) {
+                    clearInterval(waitInterval);
+                    showSartUpload();
+                }
+            }, 1000);
         }
     }
 
@@ -462,6 +577,15 @@ document.addEventListener('DOMContentLoaded', () => {
                 nbackLetterDisplay.classList.add('hidden');
                 nbackFixationDisplay.classList.remove('hidden');
 
+                // If previous trial was missed, flash the fixation cross!
+                if (state.nbackMissed) {
+                    nbackFixationDisplay.classList.add('error-flash');
+                    setTimeout(() => {
+                        nbackFixationDisplay.classList.remove('error-flash');
+                    }, 400);
+                    state.nbackMissed = false; // Reset flag
+                }
+
                 // Fixation duration: 2500ms (Total trial = 3000ms)
                 fixationTimer = setTimeout(() => {
                     logNbackTrial();
@@ -521,7 +645,9 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             if (!isCorrect) {
-                triggerNbackSubtleError();
+                if (outcome === 'Miss') {
+                    state.nbackMissed = true;
+                }
             }
 
             state.nbackLogs.push({
@@ -538,14 +664,36 @@ document.addEventListener('DOMContentLoaded', () => {
         state.nbackKeyHandler = handleNbackKey;
         window.addEventListener('keydown', state.nbackKeyHandler);
 
+        // Bind skip button safely
+        const btnSkipNback = document.getElementById('btn-skip-nback-test');
+        if (btnSkipNback) {
+            btnSkipNback.onclick = endNbackTest;
+        }
+
         // Start first trial
         runTrial();
 
         function endNbackTest() {
+            clearInterval(timerInterval);
             clearTimeout(letterTimer);
             clearTimeout(fixationTimer);
             window.removeEventListener('keydown', state.nbackKeyHandler);
-            showNbackUpload();
+            
+            // 10-second wait screen before file upload
+            showScreen('nbackWait');
+            let secondsLeft = 10;
+            const nbackWaitNumber = document.getElementById('nback-wait-number');
+            if (nbackWaitNumber) nbackWaitNumber.textContent = secondsLeft;
+            
+            const waitInterval = setInterval(() => {
+                secondsLeft--;
+                if (nbackWaitNumber) nbackWaitNumber.textContent = secondsLeft;
+                
+                if (secondsLeft <= 0) {
+                    clearInterval(waitInterval);
+                    showNbackUpload();
+                }
+            }, 1000);
         }
     }
 
@@ -608,6 +756,7 @@ document.addEventListener('DOMContentLoaded', () => {
             nbackMetrics: nbackMetrics,
             sartLogs: state.sartLogs,
             nbackLogs: state.nbackLogs,
+            baselineFile: state.baselineFile,
             sartFile: state.sartFile,
             nbackFile: state.nbackFile
         };
@@ -635,12 +784,24 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 // Display Google Drive links
                 const driveBox = document.getElementById('drive-links-box');
+                const baselineLink = document.getElementById('baseline-drive-link');
                 const sartLink = document.getElementById('sart-drive-link');
                 const nbackLink = document.getElementById('nback-drive-link');
+                
+                const baselineLinkText = document.getElementById('baseline-link-text');
                 const sartLinkText = document.getElementById('sart-link-text');
                 const nbackLinkText = document.getElementById('nback-link-text');
 
                 let showDriveBox = false;
+
+                if (resData.baselineFileUrl) {
+                    baselineLink.href = resData.baselineFileUrl;
+                    baselineLink.style.display = 'flex';
+                    baselineLinkText.textContent = 'Open Baseline File ↗';
+                    showDriveBox = true;
+                } else {
+                    baselineLink.style.display = 'none';
+                }
 
                 if (resData.sartFileUrl) {
                     sartLink.href = resData.sartFileUrl;
@@ -881,8 +1042,21 @@ document.addEventListener('DOMContentLoaded', () => {
         btnProceedNback.disabled = true;
 
         // Reset files and links
+        state.baselineFile = null;
         state.sartFile = null;
         state.nbackFile = null;
+        state.nbackMissed = false;
+        
+        // Reset all file upload UI zones
+        ['baseline', 'sart', 'nback'].forEach(prefix => {
+            const input = document.getElementById(`${prefix}-file-input`);
+            const info = document.getElementById(`${prefix}-file-info`);
+            const zone = document.getElementById(`${prefix}-upload-zone`);
+            if (input) input.value = '';
+            if (info) info.classList.add('hidden');
+            if (zone) zone.classList.remove('hidden');
+        });
+
         const driveBox = document.getElementById('drive-links-box');
         if (driveBox) driveBox.classList.add('hidden');
 
@@ -1037,6 +1211,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // Initialize drag-and-drop engines
+    setupDragAndDrop('baseline-upload-zone', 'baseline-file-input', 'baseline-file-info', 'baseline-file-name', 'baseline-file-size', 'btn-remove-baseline-file', 'baselineFile');
     setupDragAndDrop('sart-upload-zone', 'sart-file-input', 'sart-file-info', 'sart-file-name', 'sart-file-size', 'btn-remove-sart-file', 'sartFile');
     setupDragAndDrop('nback-upload-zone', 'nback-file-input', 'nback-file-info', 'nback-file-name', 'nback-file-size', 'btn-remove-nback-file', 'nbackFile');
 });

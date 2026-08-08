@@ -69,6 +69,85 @@
             </div>
         </section>
 
+        <!-- BASELINE ORBIT PROMPT SCREEN -->
+        <section id="screen-baseline-prompt" class="screen">
+            <div class="card prompt-card animate-fade-in">
+                <div class="badge">Baseline Stage</div>
+                <h2>Baseline Biometric Recording</h2>
+                <p class="subtitle">Before starting the cognitive tasks, we need to record a baseline of your biometric parameters.</p>
+                
+                <div class="orbit-reminder-box">
+                    <div class="orbit-logo">O</div>
+                    <div class="orbit-text">
+                        <h3>Start Baseline Recording</h3>
+                        <p>Open Orbit, verify sensors are connected, and click <strong>Start Recording</strong>. Let it record in the background for **5 minutes**.</p>
+                    </div>
+                </div>
+
+                <div class="countdown-action-container">
+                    <button class="btn btn-primary btn-record" id="btn-baseline-started">
+                        🔴 Baseline Recording Started
+                    </button>
+
+                    <div id="baseline-countdown-display" class="countdown-display hidden">
+                        <div class="countdown-circle">
+                            <svg class="progress-ring" width="120" height="120">
+                                <circle class="progress-ring__circle-bg" stroke="rgba(255,255,255,0.05)" stroke-width="6" fill="transparent" r="52" cx="60" cy="60"/>
+                                <circle class="progress-ring__circle" id="baseline-countdown-ring" stroke="var(--primary)" stroke-width="6" fill="transparent" r="52" cx="60" cy="60"/>
+                            </svg>
+                            <span class="countdown-number" id="baseline-countdown-number">05:00</span>
+                        </div>
+                        <p class="countdown-caption">Recording baseline... Please remain relaxed. Remaining time: <span id="baseline-countdown-seconds">300</span> seconds.</p>
+                    </div>
+                </div>
+
+                <div class="instructions-panel">
+                    <h4>Baseline Instructions:</h4>
+                    <ul>
+                        <li>Sit comfortably with your hands resting in your lap.</li>
+                        <li>Breathe normally and remain calm.</li>
+                        <li>Avoid unnecessary movements or keyboard presses.</li>
+                        <li>The system will automatically notify you when the 5 minutes are up.</li>
+                    </ul>
+                </div>
+            </div>
+        </section>
+
+        <!-- BASELINE UPLOAD SCREEN -->
+        <section id="screen-baseline-upload" class="screen">
+            <div class="card upload-card animate-fade-in">
+                <div class="badge">Baseline Complete</div>
+                <h2>Upload Baseline Orbit Recording</h2>
+                <p class="subtitle">Please upload the Orbit data recording file (.txt, .csv, or other) containing your 5-minute baseline biometric events.</p>
+                
+                <div class="upload-zone" id="baseline-upload-zone">
+                    <span class="upload-icon">📂</span>
+                    <p class="upload-prompt">Drag & drop your Baseline Orbit file here, or <span class="browse-link">browse files</span></p>
+                    <input type="file" id="baseline-file-input" class="file-input" style="display: none;">
+                </div>
+                
+                <div id="baseline-file-info" class="file-info hidden">
+                    <div class="file-details">
+                        <span class="file-name-icon">📄</span>
+                        <div class="file-meta">
+                            <span id="baseline-file-name" class="file-name">baseline.txt</span>
+                            <span id="baseline-file-size" class="file-size">120 KB</span>
+                        </div>
+                    </div>
+                    <button class="btn-remove-file" id="btn-remove-baseline-file" type="button">&times;</button>
+                </div>
+                
+                <div class="upload-actions">
+                    <button class="btn btn-primary" id="btn-proceed-to-sart">
+                        Save File & Proceed to SART2 <span class="arrow">&rarr;</span>
+                    </button>
+                    <button class="btn btn-secondary" id="btn-skip-baseline-upload">
+                        Skip Upload
+                    </button>
+                </div>
+            </div>
+        </section>
+
         <!-- SART2 ORBIT PROMPT SCREEN -->
         <section id="screen-sart-prompt" class="screen">
             <div class="card prompt-card animate-fade-in">
@@ -116,7 +195,10 @@
         <section id="screen-sart-test" class="screen dark-theme-test">
             <div class="test-header">
                 <span class="test-title">SART2 Task</span>
-                <span class="test-timer" id="sart-timer">05:00</span>
+                <div class="test-header-controls">
+                    <span class="test-timer" id="sart-timer">05:00</span>
+                    <button class="btn-skip-test" id="btn-skip-sart-test" title="End SART2 early">Skip Test</button>
+                </div>
             </div>
 
             <div class="test-workspace">
@@ -139,6 +221,22 @@
 
             <div class="test-footer">
                 <p>Press <kbd>Spacebar</kbd> for numbers. Do NOT press for <span class="highlight">3</span>.</p>
+            </div>
+        </section>
+
+        <!-- SART2 POST-TEST WAIT SCREEN -->
+        <section id="screen-sart-wait" class="screen">
+            <div class="card prompt-card animate-fade-in">
+                <div class="badge">SART2 Complete</div>
+                <h2>Capture Trailing Data</h2>
+                <p class="subtitle">Please **wait 10 seconds** before stopping or turning off your Orbit recording. This allows sensor values to stabilize and captures vital post-stimulus recovery data.</p>
+                
+                <div class="wait-countdown-container">
+                    <div class="wait-circle">
+                        <span class="wait-number" id="sart-wait-number">10</span>
+                        <span class="wait-label">seconds</span>
+                    </div>
+                </div>
             </div>
         </section>
 
@@ -261,7 +359,10 @@
         <section id="screen-nback-test" class="screen dark-theme-test">
             <div class="test-header">
                 <span class="test-title">2-Back Task</span>
-                <span class="test-timer" id="nback-timer">05:00</span>
+                <div class="test-header-controls">
+                    <span class="test-timer" id="nback-timer">05:00</span>
+                    <button class="btn-skip-test" id="btn-skip-nback-test" title="End N-Back early">Skip Test</button>
+                </div>
             </div>
 
             <div class="test-workspace">
@@ -273,6 +374,22 @@
 
             <div class="test-footer">
                 <p>Press <kbd>M</kbd> or <kbd>Spacebar</kbd> if matches the letter <span class="highlight">2 steps ago</span>.</p>
+            </div>
+        </section>
+
+        <!-- N-BACK POST-TEST WAIT SCREEN -->
+        <section id="screen-nback-wait" class="screen">
+            <div class="card prompt-card animate-fade-in">
+                <div class="badge">N-Back Complete</div>
+                <h2>Capture Trailing Data</h2>
+                <p class="subtitle">Please **wait 10 seconds** before stopping or turning off your Orbit recording. This allows sensor values to stabilize and captures vital post-stimulus recovery data.</p>
+                
+                <div class="wait-countdown-container">
+                    <div class="wait-circle">
+                        <span class="wait-number" id="nback-wait-number">10</span>
+                        <span class="wait-label">seconds</span>
+                    </div>
+                </div>
             </div>
         </section>
 
@@ -395,6 +512,13 @@
                 <h3>Uploaded Orbit Files on Google Drive</h3>
                 <p class="drive-desc">The following links direct to the secure raw recording files stored on Google Drive.</p>
                 <div class="drive-links-grid">
+                    <a id="baseline-drive-link" class="drive-link" target="_blank" href="#">
+                        <span class="drive-icon">🌱</span>
+                        <div class="drive-link-text">
+                            <strong>Baseline Orbit File</strong>
+                            <span class="drive-link-url" id="baseline-link-text">Open in Google Drive &rarr;</span>
+                        </div>
+                    </a>
                     <a id="sart-drive-link" class="drive-link" target="_blank" href="#">
                         <span class="drive-icon">🪐</span>
                         <div class="drive-link-text">
