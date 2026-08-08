@@ -19,7 +19,9 @@ document.addEventListener('DOMContentLoaded', () => {
         sartKeyHandler: null,
         nbackKeyHandler: null,
         // Paste your deployed Google Apps Script Web App URL below:
-        sheetsUrl: 'https://script.google.com/macros/s/AKfycbzIr7lVPqD0aB_dM5ga3QuKqJuNUdGSc1sZze2NOFpwSHwrTE_zUDVnQ9FjMHtYX17P/exec'
+        sheetsUrl: 'https://script.google.com/macros/s/AKfycbyBQuBIwS2Qg7uG_VmmMIhuc3qXRvesXdEYVwEL4xm4JUIaGN6LqVt-EHxvcGSXOYcx/exec',
+        sartFile: null,       // Stores { base64: '...', name: '...', mimeType: '...' }
+        nbackFile: null       // Stores { base64: '...', name: '...', mimeType: '...' }
     };
 
     // DOM ELEMENTS
@@ -27,9 +29,11 @@ document.addEventListener('DOMContentLoaded', () => {
         welcome: document.getElementById('screen-welcome'),
         sartPrompt: document.getElementById('screen-sart-prompt'),
         sartTest: document.getElementById('screen-sart-test'),
+        sartUpload: document.getElementById('screen-sart-upload'),
         break: document.getElementById('screen-break'),
         nbackPrompt: document.getElementById('screen-nback-prompt'),
         nbackTest: document.getElementById('screen-nback-test'),
+        nbackUpload: document.getElementById('screen-nback-upload'),
         results: document.getElementById('screen-results')
     };
 
@@ -320,7 +324,7 @@ document.addEventListener('DOMContentLoaded', () => {
             clearTimeout(stimulusTimer);
             clearTimeout(maskTimer);
             window.removeEventListener('keydown', state.sartKeyHandler);
-            startBreak();
+            showSartUpload();
         }
     }
 
@@ -511,7 +515,7 @@ document.addEventListener('DOMContentLoaded', () => {
             clearTimeout(letterTimer);
             clearTimeout(fixationTimer);
             window.removeEventListener('keydown', state.nbackKeyHandler);
-            finishAssessment();
+            showNbackUpload();
         }
     }
 
@@ -573,28 +577,71 @@ document.addEventListener('DOMContentLoaded', () => {
             sartMetrics: sartMetrics,
             nbackMetrics: nbackMetrics,
             sartLogs: state.sartLogs,
-            nbackLogs: state.nbackLogs
+            nbackLogs: state.nbackLogs,
+            sartFile: state.sartFile,
+            nbackFile: state.nbackFile
         };
 
+        // Use text/plain;charset=utf-8 to bypass CORS OPTIONS preflight
         fetch(state.sheetsUrl, {
             method: 'POST',
-            mode: 'no-cors',
             headers: {
-                'Content-Type': 'application/json'
+                'Content-Type': 'text/plain;charset=utf-8'
             },
             body: JSON.stringify(payload)
         })
-        .then(() => {
-            if (syncBox && syncText) {
-                syncBox.className = 'sync-status-box success';
-                syncText.textContent = 'Results synced to Google Sheets! ✅';
+        .then(res => {
+            if (!res.ok) {
+                throw new Error(`HTTP error! Status: ${res.status}`);
+            }
+            return res.json();
+        })
+        .then(resData => {
+            if (resData.status === 'success') {
+                if (syncBox && syncText) {
+                    syncBox.className = 'sync-status-box success';
+                    syncText.textContent = 'Results synced to Google Sheets! ✅';
+                }
+
+                // Display Google Drive links
+                const driveBox = document.getElementById('drive-links-box');
+                const sartLink = document.getElementById('sart-drive-link');
+                const nbackLink = document.getElementById('nback-drive-link');
+                const sartLinkText = document.getElementById('sart-link-text');
+                const nbackLinkText = document.getElementById('nback-link-text');
+
+                let showDriveBox = false;
+
+                if (resData.sartFileUrl) {
+                    sartLink.href = resData.sartFileUrl;
+                    sartLink.style.display = 'flex';
+                    sartLinkText.textContent = 'Open SART2 File ↗';
+                    showDriveBox = true;
+                } else {
+                    sartLink.style.display = 'none';
+                }
+
+                if (resData.nbackFileUrl) {
+                    nbackLink.href = resData.nbackFileUrl;
+                    nbackLink.style.display = 'flex';
+                    nbackLinkText.textContent = 'Open N-Back File ↗';
+                    showDriveBox = true;
+                } else {
+                    nbackLink.style.display = 'none';
+                }
+
+                if (showDriveBox && driveBox) {
+                    driveBox.classList.remove('hidden');
+                }
+            } else {
+                throw new Error(resData.message || 'Unknown server error');
             }
         })
         .catch(err => {
             console.error('Google Sheets sync error:', err);
             if (syncBox && syncText) {
                 syncBox.className = 'sync-status-box error';
-                syncText.textContent = 'Sync failed. Please download CSV instead. ❌';
+                syncText.textContent = `Sync failed: ${err.message}. Download CSV. ❌`;
             }
         });
     }
@@ -803,6 +850,131 @@ document.addEventListener('DOMContentLoaded', () => {
         nbackCountdownDisplay.classList.add('hidden');
         btnProceedNback.disabled = true;
 
+        // Reset files and links
+        state.sartFile = null;
+        state.nbackFile = null;
+        const driveBox = document.getElementById('drive-links-box');
+        if (driveBox) driveBox.classList.add('hidden');
+
         showScreen('welcome');
     });
+
+    // FILE UPLOAD AND TRANSITIONS
+    function showSartUpload() {
+        showScreen('sartUpload');
+        state.sartFile = null;
+        document.getElementById('sart-file-input').value = '';
+        document.getElementById('sart-file-info').classList.add('hidden');
+        document.getElementById('sart-upload-zone').classList.remove('hidden');
+    }
+
+    function showNbackUpload() {
+        showScreen('nbackUpload');
+        state.nbackFile = null;
+        document.getElementById('nback-file-input').value = '';
+        document.getElementById('nback-file-info').classList.add('hidden');
+        document.getElementById('nback-upload-zone').classList.remove('hidden');
+    }
+
+    // Link upload screen buttons
+    document.getElementById('btn-proceed-to-break').addEventListener('click', () => {
+        startBreak();
+    });
+
+    document.getElementById('btn-skip-sart-upload').addEventListener('click', () => {
+        state.sartFile = null;
+        startBreak();
+    });
+
+    document.getElementById('btn-submit-results').addEventListener('click', () => {
+        finishAssessment();
+    });
+
+    document.getElementById('btn-skip-nback-upload').addEventListener('click', () => {
+        state.nbackFile = null;
+        finishAssessment();
+    });
+
+    // Helper: Setup Drag and Drop Zone
+    function setupDragAndDrop(zoneId, inputId, infoId, nameId, sizeId, removeBtnId, stateKey) {
+        const zone = document.getElementById(zoneId);
+        const input = document.getElementById(inputId);
+        const info = document.getElementById(infoId);
+        const nameText = document.getElementById(nameId);
+        const sizeText = document.getElementById(sizeId);
+        const removeBtn = document.getElementById(removeBtnId);
+
+        if (!zone || !input) return;
+
+        // Click to browse
+        zone.addEventListener('click', () => input.click());
+
+        // Drag events
+        ['dragenter', 'dragover'].forEach(eventName => {
+            zone.addEventListener(eventName, (e) => {
+                e.preventDefault();
+                zone.classList.add('dragover');
+            }, false);
+        });
+
+        ['dragleave', 'drop'].forEach(eventName => {
+            zone.addEventListener(eventName, (e) => {
+                e.preventDefault();
+                zone.classList.remove('dragover');
+            }, false);
+        });
+
+        // Drop file
+        zone.addEventListener('drop', (e) => {
+            const dt = e.dataTransfer;
+            const files = dt.files;
+            if (files.length > 0) {
+                handleFileSelect(files[0]);
+            }
+        });
+
+        // Input change
+        input.addEventListener('change', (e) => {
+            if (input.files.length > 0) {
+                handleFileSelect(input.files[0]);
+            }
+        });
+
+        // Remove file
+        removeBtn.addEventListener('click', (e) => {
+            e.stopPropagation(); // prevent triggering zone click
+            state[stateKey] = null;
+            input.value = '';
+            info.classList.add('hidden');
+            zone.classList.remove('hidden');
+        });
+
+        function handleFileSelect(file) {
+            nameText.textContent = file.name;
+            
+            let sizeStr = '';
+            if (file.size < 1024) sizeStr = file.size + ' B';
+            else if (file.size < 1048576) sizeStr = (file.size / 1024).toFixed(1) + ' KB';
+            else sizeStr = (file.size / 1048576).toFixed(1) + ' MB';
+            sizeText.textContent = sizeStr;
+
+            zone.classList.add('hidden');
+            info.classList.remove('hidden');
+
+            const reader = new FileReader();
+            reader.onload = function(evt) {
+                const base64String = evt.target.result.split(',')[1];
+                state[stateKey] = {
+                    base64: base64String,
+                    name: file.name,
+                    mimeType: file.type || 'application/octet-stream'
+                };
+            };
+            reader.readAsDataURL(file);
+        }
+    }
+
+    // Initialize drag-and-drop engines
+    setupDragAndDrop('sart-upload-zone', 'sart-file-input', 'sart-file-info', 'sart-file-name', 'sart-file-size', 'btn-remove-sart-file', 'sartFile');
+    setupDragAndDrop('nback-upload-zone', 'nback-file-input', 'nback-file-info', 'nback-file-name', 'nback-file-size', 'btn-remove-nback-file', 'nbackFile');
 });
