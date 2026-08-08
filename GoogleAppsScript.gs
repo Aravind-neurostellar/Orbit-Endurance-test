@@ -21,8 +21,12 @@ function doPost(e) {
     // Parse the incoming JSON payload
     var data = JSON.parse(e.postData.contents);
     var participant = data.participantName || "Unknown";
-    var timestamp = data.timestamp || new Date().toISOString();
+    var clientTimestamp = data.timestamp || new Date().toISOString();
     var sessionMode = data.sessionMode || "standard";
+    
+    // Convert client timestamp explicitly to Indian Standard Time (IST - GMT+5:30)
+    var dateObj = new Date(clientTimestamp);
+    var timestamp = Utilities.formatDate(dateObj, "GMT+5:30", "yyyy-MM-dd HH:mm:ss");
     
     var ss = SpreadsheetApp.openById("1A2ZqoX-TkrOWKKVfYG4Hb-WBzo4pHPY7QBFi18aMNB8");
     
@@ -202,6 +206,100 @@ function doPost(e) {
       logsSheet.getRange(logsSheet.getLastRow() + 1, 1, rowsToWrite.length, rowsToWrite[0].length).setValues(rowsToWrite);
     }
     
+    // ----------------------------------------------------
+    // 4. CREATE BEAUTIFULLY FORMATTED INDIVIDUAL SHEET FOR THIS PARTICIPANT
+    // ----------------------------------------------------
+    try {
+      var cleanTime = timestamp.split(" ")[1].replace(/:/g, "-");
+      // Clean name of non-alphanumeric to keep tab names valid
+      var cleanName = participant.replace(/[^a-zA-Z0-9\s]/g, "").substring(0, 15);
+      var sheetName = cleanName + " (" + cleanTime + ")";
+      
+      // Handle name collisions safely
+      var finalSheetName = sheetName;
+      var counter = 1;
+      while (ss.getSheetByName(finalSheetName)) {
+        finalSheetName = sheetName + "_" + counter;
+        counter++;
+      }
+      
+      var pSheet = ss.insertSheet(finalSheetName);
+      
+      // Set report card metadata titles
+      pSheet.getRange("A1").setValue("Participant Cognitive Assessment Report").setFontSize(14).setFontWeight("bold").setFontColor("#1e3a8a");
+      pSheet.getRange("A2").setValue("Name: " + participant).setFontWeight("bold");
+      pSheet.getRange("B2").setValue("Session Date/Time: " + timestamp).setFontWeight("bold");
+      pSheet.getRange("C2").setValue("Mode: " + sessionMode).setFontWeight("bold");
+      
+      // Performance stats summary section
+      pSheet.getRange("A4").setValue("OVERALL PERFORMANCE SUMMARY").setFontWeight("bold").setFontSize(11).setFontColor("#0369a1");
+      
+      pSheet.getRange(5, 1, 5, 3).setValues([
+        ["Metric", "SART2 Task (Vigilance)", "N-Back Task (Working Memory)"],
+        ["Accuracy", data.sartMetrics.accuracy + "%", data.nbackMetrics.accuracy + "%"],
+        ["Mean Reaction Time", (data.sartMetrics.meanRT !== null ? data.sartMetrics.meanRT + " ms" : "N/A"), (data.nbackMetrics.meanRT !== null ? data.nbackMetrics.meanRT + " ms" : "N/A")],
+        ["Omissions (Misses)", data.sartMetrics.omissionErrors, data.nbackMetrics.misses],
+        ["Commissions (False Alarms)", data.sartMetrics.commissionErrors, data.nbackMetrics.falseAlarms]
+      ]);
+      
+      pSheet.getRange(5, 1, 5, 3).setBorder(true, true, true, true, true, true, "#94a3b8", SpreadsheetApp.BorderStyle.SOLID);
+      pSheet.getRange(5, 1, 1, 3).setFontWeight("bold").setBackground("#e0f2fe");
+      pSheet.getRange(5, 1, 5, 1).setFontWeight("bold");
+      
+      // Drive file links
+      pSheet.getRange("A11").setValue("Google Drive Orbit File Links:").setFontWeight("bold");
+      pSheet.getRange("B11").setValue("SART2 Orbit File: " + (sartFileUrl.indexOf("http") === 0 ? sartFileUrl : "N/A"));
+      pSheet.getRange("C11").setValue("N-Back Orbit File: " + (nbackFileUrl.indexOf("http") === 0 ? nbackFileUrl : "N/A"));
+      
+      // Raw trial data header
+      pSheet.getRange("A13").setValue("RAW EVENT LOGS (TRIAL-BY-TRIAL)").setFontWeight("bold").setFontSize(11).setFontColor("#0369a1");
+      
+      var trialHeaders = ["Task", "Trial Number", "Stimulus", "Stimulus Size / N", "Is Target", "Response Key", "Reaction Time (ms)", "Is Correct", "Outcome Details"];
+      pSheet.getRange(14, 1, 1, 9).setValues([trialHeaders]).setFontWeight("bold").setBackground("#f1f5f9");
+      
+      // Compile individual rows
+      var pRows = [];
+      if (data.sartLogs && data.sartLogs.length > 0) {
+        data.sartLogs.forEach(function(t) {
+          pRows.push([
+            "SART2",
+            t.trialNum,
+            t.digit.toString(),
+            t.fontSize.toString(),
+            (t.digit === 3) ? "TRUE" : "FALSE",
+            t.keyPressed,
+            t.reactionTime !== null ? t.reactionTime : "N/A",
+            t.isCorrect ? "TRUE" : "FALSE",
+            t.errorType
+          ]);
+        });
+      }
+      
+      if (data.nbackLogs && data.nbackLogs.length > 0) {
+        data.nbackLogs.forEach(function(t) {
+          pRows.push([
+            "2-Back",
+            t.trialNum,
+            t.letter,
+            "2",
+            t.isMatch ? "TRUE" : "FALSE",
+            t.keyPressed,
+            t.reactionTime !== null ? t.reactionTime : "N/A",
+            t.isCorrect ? "TRUE" : "FALSE",
+            t.outcome
+          ]);
+        });
+      }
+      
+      if (pRows.length > 0) {
+        pSheet.getRange(15, 1, pRows.length, pRows[0].length).setValues(pRows);
+      }
+      
+      pSheet.autoResizeColumns(1, 9);
+    } catch (sheetErr) {
+      Logger.log("Individual sheet creation failed: " + sheetErr.toString());
+    }
+    
     // Return Success Response with Google Drive file links
     var responseObj = {
       "status": "success", 
@@ -230,6 +328,6 @@ function getOrCreateFolder(folderName) {
 }
 
 // Helper: Formats timestamp safely for filename purposes (removes colons and dots)
-function getSafeTimestampString(isoString) {
-  return isoString.replace(/:/g, "-").replace(/\./g, "-");
+function getSafeTimestampString(timestampStr) {
+  return timestampStr.replace(/:/g, "-").replace(/\./g, "-").replace(/\s+/g, "_");
 }
