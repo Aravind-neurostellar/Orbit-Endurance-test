@@ -863,39 +863,71 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // FILE UPLOAD AND TRANSITIONS
     function showSartUpload() {
+        const fileInput = document.getElementById('sart-file-input');
+        const fileInfo = document.getElementById('sart-file-info');
+        const uploadZone = document.getElementById('sart-upload-zone');
+
+        if (!document.getElementById('screen-sart-upload') || !fileInput || !fileInfo || !uploadZone) {
+            console.warn("SART upload screen elements missing. Proceeding directly to break.");
+            startBreak();
+            return;
+        }
+
         showScreen('sartUpload');
         state.sartFile = null;
-        document.getElementById('sart-file-input').value = '';
-        document.getElementById('sart-file-info').classList.add('hidden');
-        document.getElementById('sart-upload-zone').classList.remove('hidden');
+        fileInput.value = '';
+        fileInfo.classList.add('hidden');
+        uploadZone.classList.remove('hidden');
     }
 
     function showNbackUpload() {
+        const fileInput = document.getElementById('nback-file-input');
+        const fileInfo = document.getElementById('nback-file-info');
+        const uploadZone = document.getElementById('nback-upload-zone');
+
+        if (!document.getElementById('screen-nback-upload') || !fileInput || !fileInfo || !uploadZone) {
+            console.warn("N-Back upload screen elements missing. Proceeding directly to results.");
+            finishAssessment();
+            return;
+        }
+
         showScreen('nbackUpload');
         state.nbackFile = null;
-        document.getElementById('nback-file-input').value = '';
-        document.getElementById('nback-file-info').classList.add('hidden');
-        document.getElementById('nback-upload-zone').classList.remove('hidden');
+        fileInput.value = '';
+        fileInfo.classList.add('hidden');
+        uploadZone.classList.remove('hidden');
     }
 
-    // Link upload screen buttons
-    document.getElementById('btn-proceed-to-break').addEventListener('click', () => {
-        startBreak();
-    });
+    // Link upload screen buttons safely
+    const btnProceedToBreak = document.getElementById('btn-proceed-to-break');
+    if (btnProceedToBreak) {
+        btnProceedToBreak.addEventListener('click', () => {
+            startBreak();
+        });
+    }
 
-    document.getElementById('btn-skip-sart-upload').addEventListener('click', () => {
-        state.sartFile = null;
-        startBreak();
-    });
+    const btnSkipSartUpload = document.getElementById('btn-skip-sart-upload');
+    if (btnSkipSartUpload) {
+        btnSkipSartUpload.addEventListener('click', () => {
+            state.sartFile = null;
+            startBreak();
+        });
+    }
 
-    document.getElementById('btn-submit-results').addEventListener('click', () => {
-        finishAssessment();
-    });
+    const btnSubmitResults = document.getElementById('btn-submit-results');
+    if (btnSubmitResults) {
+        btnSubmitResults.addEventListener('click', () => {
+            finishAssessment();
+        });
+    }
 
-    document.getElementById('btn-skip-nback-upload').addEventListener('click', () => {
-        state.nbackFile = null;
-        finishAssessment();
-    });
+    const btnSkipNbackUpload = document.getElementById('btn-skip-nback-upload');
+    if (btnSkipNbackUpload) {
+        btnSkipNbackUpload.addEventListener('click', () => {
+            state.nbackFile = null;
+            finishAssessment();
+        });
+    }
 
     // Helper: Setup Drag and Drop Zone
     function setupDragAndDrop(zoneId, inputId, infoId, nameId, sizeId, removeBtnId, stateKey) {
@@ -906,7 +938,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const sizeText = document.getElementById(sizeId);
         const removeBtn = document.getElementById(removeBtnId);
 
-        if (!zone || !input) return;
+        if (!zone || !input || !info || !nameText || !sizeText || !removeBtn) return;
 
         // Click to browse
         zone.addEventListener('click', () => input.click());
