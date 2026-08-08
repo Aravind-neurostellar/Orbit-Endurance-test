@@ -171,6 +171,17 @@ document.addEventListener('DOMContentLoaded', () => {
         }, 1000);
     }
 
+    let sartFeedbackTimeout = null;
+    function showSubtleSartFeedback(text, type) {
+        clearTimeout(sartFeedbackTimeout);
+        sartFeedbackDisplay.textContent = text;
+        sartFeedbackDisplay.className = `feedback-indicator ${type}`;
+        sartFeedbackDisplay.classList.remove('hidden');
+        sartFeedbackTimeout = setTimeout(() => {
+            sartFeedbackDisplay.classList.add('hidden');
+        }, 600);
+    }
+
     // SART2 ENGINE
     function startSartTest() {
         state.currentTest = 'sart2';
@@ -276,8 +287,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     if (sartDigitDisplay.classList.contains('hidden')) {
                         sartMaskDisplay.classList.add('error');
                     }
-                    sartFeedbackDisplay.textContent = 'Error! Do not press on 3!';
-                    sartFeedbackDisplay.classList.remove('hidden');
+                    showSubtleSartFeedback('Error! Do not press on 3!', 'commission');
                 }
             }
         }
@@ -300,6 +310,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 } else {
                     isCorrect = false; // Omission error
                     errorType = 'omission';
+                    showSubtleSartFeedback('Missed press!', 'miss');
                 }
             }
 
@@ -460,6 +471,15 @@ document.addEventListener('DOMContentLoaded', () => {
             }, 500);
         }
 
+        function triggerNbackSubtleError() {
+            nbackFixationDisplay.classList.add('error-flash');
+            nbackLetterDisplay.classList.add('error-flash');
+            setTimeout(() => {
+                nbackFixationDisplay.classList.remove('error-flash');
+                nbackLetterDisplay.classList.remove('error-flash');
+            }, 400);
+        }
+
         function handleNbackKey(e) {
             if (e.code === 'KeyM' || e.code === 'Space') {
                 e.preventDefault();
@@ -468,6 +488,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 
                 keyResponse = e.code === 'KeyM' ? 'M' : 'Space';
                 pressRT = Math.round(performance.now() - trialStartTimestamp);
+
+                if (!isMatch) {
+                    triggerNbackSubtleError();
+                }
             }
         }
 
@@ -494,6 +518,10 @@ document.addEventListener('DOMContentLoaded', () => {
                     isCorrect = true;
                     outcome = 'Correct Rejection';
                 }
+            }
+
+            if (!isCorrect) {
+                triggerNbackSubtleError();
             }
 
             state.nbackLogs.push({

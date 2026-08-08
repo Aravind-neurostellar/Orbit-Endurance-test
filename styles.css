@@ -1150,3 +1150,22 @@ select:focus {
         grid-template-columns: 1fr;
     }
 }
+
+/* Subtle Error Feedback Styles */
+.feedback-indicator.miss {
+    color: #f97316; /* Muted orange for omission */
+    font-size: 1.1rem;
+    font-weight: 500;
+}
+
+.feedback-indicator.commission {
+    color: #ef4444; /* Soft red for commission */
+    font-size: 1.1rem;
+    font-weight: 500;
+}
+
+.error-flash {
+    color: #f97316 !important; /* Soft orange/red flash for N-back error */
+    text-shadow: 0 0 8px rgba(249, 115, 22, 0.4);
+    transition: color 0.1s ease-in-out;
+}
