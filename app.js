@@ -23,7 +23,10 @@ document.addEventListener('DOMContentLoaded', () => {
         baselineFile: null,   // Stores { base64: '...', name: '...', mimeType: '...' }
         sartFile: null,       // Stores { base64: '...', name: '...', mimeType: '...' }
         nbackFile: null,      // Stores { base64: '...', name: '...', mimeType: '...' }
-        nbackMissed: false
+        nbackMissed: false,
+        baselineInterval: null,
+        sartWaitInterval: null,
+        nbackWaitInterval: null
     };
 
     // DOM ELEMENTS
@@ -130,12 +133,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // EVENT: Setup Form Submit
     function resetBaselinePrompt() {
+        const initialActions = document.getElementById('baseline-initial-actions');
         const btnBaselineStarted = document.getElementById('btn-baseline-started');
         const baselineCountdownDisplay = document.getElementById('baseline-countdown-display');
-        if (btnBaselineStarted && baselineCountdownDisplay) {
-            btnBaselineStarted.classList.remove('hidden');
-            baselineCountdownDisplay.classList.add('hidden');
-        }
+        if (initialActions) initialActions.classList.remove('hidden');
+        if (btnBaselineStarted) btnBaselineStarted.classList.remove('hidden');
+        if (baselineCountdownDisplay) baselineCountdownDisplay.classList.add('hidden');
     }
 
     setupForm.addEventListener('submit', (e) => {
@@ -164,7 +167,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if (btnBaselineStarted) {
         btnBaselineStarted.addEventListener('click', () => {
-            btnBaselineStarted.classList.add('hidden');
+            const initialActions = document.getElementById('baseline-initial-actions');
+            if (initialActions) initialActions.classList.add('hidden');
             baselineCountdownDisplay.classList.remove('hidden');
             
             const durationLimit = state.testDurations[state.sessionMode];
@@ -174,7 +178,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (baselineCountdownSeconds) baselineCountdownSeconds.textContent = Math.floor(timeLeft / 1000);
             if (baselineCountdownRing) setProgressRing(baselineCountdownRing, 100);
             
-            const interval = setInterval(() => {
+            state.baselineInterval = setInterval(() => {
                 timeLeft -= 1000;
                 if (baselineCountdownNumber) baselineCountdownNumber.textContent = formatTimerString(timeLeft);
                 if (baselineCountdownSeconds) baselineCountdownSeconds.textContent = Math.floor(timeLeft / 1000);
@@ -185,7 +189,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
                 
                 if (timeLeft <= 0) {
-                    clearInterval(interval);
+                    clearInterval(state.baselineInterval);
+                    state.baselineInterval = null;
                     showScreen('baselineUpload');
                 }
             }, 1000);
@@ -194,10 +199,36 @@ document.addEventListener('DOMContentLoaded', () => {
             if (state.sessionMode === 'demo' && baselineCountdownNumber) {
                 baselineCountdownNumber.style.cursor = 'pointer';
                 baselineCountdownNumber.onclick = () => {
-                    clearInterval(interval);
+                    clearInterval(state.baselineInterval);
+                    state.baselineInterval = null;
                     showScreen('baselineUpload');
                 };
             }
+        });
+    }
+
+    // Skip Baseline Stage (completely bypasses baseline and proceeds directly to SART2)
+    const btnSkipBaselineStage = document.getElementById('btn-skip-baseline-stage');
+    if (btnSkipBaselineStage) {
+        btnSkipBaselineStage.addEventListener('click', () => {
+            if (state.baselineInterval) {
+                clearInterval(state.baselineInterval);
+                state.baselineInterval = null;
+            }
+            state.baselineFile = null;
+            showScreen('sartPrompt');
+        });
+    }
+
+    // Skip Baseline Timer (goes directly to upload screen)
+    const btnSkipBaselineTimer = document.getElementById('btn-skip-baseline-timer');
+    if (btnSkipBaselineTimer) {
+        btnSkipBaselineTimer.addEventListener('click', () => {
+            if (state.baselineInterval) {
+                clearInterval(state.baselineInterval);
+                state.baselineInterval = null;
+            }
+            showScreen('baselineUpload');
         });
     }
 
@@ -444,15 +475,28 @@ document.addEventListener('DOMContentLoaded', () => {
             const sartWaitNumber = document.getElementById('sart-wait-number');
             if (sartWaitNumber) sartWaitNumber.textContent = secondsLeft;
             
-            const waitInterval = setInterval(() => {
+            state.sartWaitInterval = setInterval(() => {
                 secondsLeft--;
                 if (sartWaitNumber) sartWaitNumber.textContent = secondsLeft;
                 
                 if (secondsLeft <= 0) {
-                    clearInterval(waitInterval);
+                    clearInterval(state.sartWaitInterval);
+                    state.sartWaitInterval = null;
                     showSartUpload();
                 }
             }, 1000);
+
+            // Bind skip wait button
+            const btnSkipSartWait = document.getElementById('btn-skip-sart-wait');
+            if (btnSkipSartWait) {
+                btnSkipSartWait.onclick = () => {
+                    if (state.sartWaitInterval) {
+                        clearInterval(state.sartWaitInterval);
+                        state.sartWaitInterval = null;
+                    }
+                    showSartUpload();
+                };
+            }
         }
     }
 
@@ -685,15 +729,28 @@ document.addEventListener('DOMContentLoaded', () => {
             const nbackWaitNumber = document.getElementById('nback-wait-number');
             if (nbackWaitNumber) nbackWaitNumber.textContent = secondsLeft;
             
-            const waitInterval = setInterval(() => {
+            state.nbackWaitInterval = setInterval(() => {
                 secondsLeft--;
                 if (nbackWaitNumber) nbackWaitNumber.textContent = secondsLeft;
                 
                 if (secondsLeft <= 0) {
-                    clearInterval(waitInterval);
+                    clearInterval(state.nbackWaitInterval);
+                    state.nbackWaitInterval = null;
                     showNbackUpload();
                 }
             }, 1000);
+
+            // Bind skip wait button
+            const btnSkipNbackWait = document.getElementById('btn-skip-nback-wait');
+            if (btnSkipNbackWait) {
+                btnSkipNbackWait.onclick = () => {
+                    if (state.nbackWaitInterval) {
+                        clearInterval(state.nbackWaitInterval);
+                        state.nbackWaitInterval = null;
+                    }
+                    showNbackUpload();
+                };
+            }
         }
     }
 
@@ -1032,6 +1089,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // ACTION: Restart Session
     btnRestart.addEventListener('click', () => {
+        // Clear all active intervals to prevent leaks on restart
+        [state.baselineInterval, state.sartWaitInterval, state.nbackWaitInterval].forEach(interval => {
+            if (interval) clearInterval(interval);
+        });
+        state.baselineInterval = null;
+        state.sartWaitInterval = null;
+        state.nbackWaitInterval = null;
+
         // Reset inputs and screens
         usernameInput.value = '';
         sessionModeSelect.value = 'standard';
